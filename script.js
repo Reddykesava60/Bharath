@@ -1,4 +1,7 @@
+
 const API_KEY = 'f00b5da72c07482a775f4df7f14c3513';
+
+// DOM Elements
 const cityInput = document.getElementById('city-input');
 const searchBtn = document.getElementById('search-btn');
 const cityName = document.getElementById('city-name');
@@ -11,13 +14,19 @@ const windSpeed = document.getElementById('wind-speed');
 const pressure = document.getElementById('pressure');
 const forecastContainer = document.getElementById('forecast-container');
 const currentTime = document.getElementById('current-time');
-let currentCity = 'Delhi'
+
+// Default city
+let currentCity = 'London';
+
+// Initialize the app
 document.addEventListener('DOMContentLoaded', () => {
     updateTime();
     setInterval(updateTime, 1000);
     document.getElementById('year').textContent = new Date().getFullYear();
     fetchWeather(currentCity);
     fetchForecast(currentCity);
+    
+    // Event listeners
     searchBtn.addEventListener('click', () => {
         if (cityInput.value.trim() !== '') {
             currentCity = cityInput.value.trim();
@@ -26,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
             cityInput.value = '';
         }
     });
+    
     cityInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && cityInput.value.trim() !== '') {
             currentCity = cityInput.value.trim();
@@ -35,6 +45,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+// Update current time
 function updateTime() {
     const now = new Date();
     const options = { 
@@ -48,6 +60,8 @@ function updateTime() {
     };
     currentTime.textContent = now.toLocaleDateString('en-US', options);
 }
+
+// Fetch current weather data
 async function fetchWeather(city) {
     try {
         const response = await fetch(
@@ -65,6 +79,8 @@ async function fetchWeather(city) {
         alert('Error fetching weather data. Please try again.');
     }
 }
+
+// Display weather data
 function displayWeather(data) {
     cityName.textContent = ${data.name}, ${data.sys.country};
     temperature.textContent = ${Math.round(data.main.temp)}°C;
@@ -75,6 +91,8 @@ function displayWeather(data) {
     windSpeed.textContent = ${(data.wind.speed * 3.6).toFixed(1)} km/h;
     pressure.textContent = ${data.main.pressure} hPa;
 }
+
+// Fetch forecast data
 async function fetchForecast(city) {
     try {
         const response = await fetch(
@@ -89,20 +107,31 @@ async function fetchForecast(city) {
         console.error('Error fetching forecast data:', error);
     }
 }
+
+// Display forecast data
 function displayForecast(forecastData) {
+    // Clear previous forecast
     forecastContainer.innerHTML = '';
+    
+    // We'll show one forecast per day (at noon when available)
     const dailyForecasts = [];
     
     for (let i = 0; i < forecastData.length; i++) {
         const forecast = forecastData[i];
         const date = new Date(forecast.dt * 1000);
         const hours = date.getHours();
+        
+        // Use noon forecast or the first available forecast of the day
         if (hours === 12 || dailyForecasts.length === 0 || 
             !isSameDay(date, new Date(dailyForecasts[dailyForecasts.length - 1].dt * 1000))) {
             dailyForecasts.push(forecast);
         }
+        
+        // Limit to 5 days
         if (dailyForecasts.length === 5) break;
     }
+    
+    // Create forecast cards
     dailyForecasts.forEach(forecast => {
         const date = new Date(forecast.dt * 1000);
         const day = date.toLocaleDateString('en-US', { weekday: 'short' });
@@ -123,6 +152,8 @@ function displayForecast(forecastData) {
         forecastContainer.appendChild(forecastCard);
     });
 }
+
+// Helper function to check if two dates are the same day
 function isSameDay(date1, date2) {
     return date1.getFullYear() === date2.getFullYear() &&
            date1.getMonth() === date2.getMonth() &&
