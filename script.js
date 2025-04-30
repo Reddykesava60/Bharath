@@ -1,161 +1,69 @@
 
-const API_KEY = 'f00b5da72c07482a775f4df7f14c3513';
 
-// DOM Elements
-const cityInput = document.getElementById('city-input');
-const searchBtn = document.getElementById('search-btn');
-const cityName = document.getElementById('city-name');
-const temperature = document.getElementById('temperature');
-const weatherDesc = document.getElementById('weather-desc');
-const weatherIcon = document.getElementById('weather-icon');
-const feelsLike = document.getElementById('feels-like');
-const humidity = document.getElementById('humidity');
-const windSpeed = document.getElementById('wind-speed');
-const pressure = document.getElementById('pressure');
-const forecastContainer = document.getElementById('forecast-container');
-const currentTime = document.getElementById('current-time');
+const apiKey = 'f00b5da72c07482a775f4df7f14c3513';
 
-// Default city
-let currentCity = 'London';
+document.getElementById("search-btn").addEventListener("click", getWeather);
+document.getElementById("year").textContent = new Date().getFullYear();
 
-// Initialize the app
-document.addEventListener('DOMContentLoaded', () => {
-    updateTime();
-    setInterval(updateTime, 1000);
-    document.getElementById('year').textContent = new Date().getFullYear();
-    fetchWeather(currentCity);
-    fetchForecast(currentCity);
-    
-    // Event listeners
-    searchBtn.addEventListener('click', () => {
-        if (cityInput.value.trim() !== '') {
-            currentCity = cityInput.value.trim();
-            fetchWeather(currentCity);
-            fetchForecast(currentCity);
-            cityInput.value = '';
-        }
-    });
-    
-    cityInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && cityInput.value.trim() !== '') {
-            currentCity = cityInput.value.trim();
-            fetchWeather(currentCity);
-            fetchForecast(currentCity);
-            cityInput.value = '';
-        }
-    });
-});
+function getWeather() {
+  const city = document.getElementById("city-input").value.trim();
+  if (!city) return alert("Please enter a city name.");
 
-// Update current time
-function updateTime() {
-    const now = new Date();
-    const options = { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        hour: '2-digit', 
-        minute: '2-digit',
-        second: '2-digit'
-    };
-    currentTime.textContent = now.toLocaleDateString('en-US', options);
+  fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${apiKey}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.cod !== 200) {
+        alert(data.message);
+        return;
+      }
+
+      document.getElementById("city-name").textContent = data.name;
+      document.getElementById("temperature").textContent = `${data.main.temp.toFixed(1)}°C`;
+      document.getElementById("feels-like").textContent = `${data.main.feels_like.toFixed(1)}°C`;
+      document.getElementById("humidity").textContent = `${data.main.humidity}%`;
+      document.getElementById("wind-speed").textContent = `${(data.wind.speed * 3.6).toFixed(1)} km/h`;
+      document.getElementById("pressure").textContent = `${data.main.pressure} hPa`;
+      document.getElementById("weather-desc").textContent = data.weather[0].description;
+      document.getElementById("weather-icon").src = `https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png`;
+
+      getForecast(city);
+    })
+    .catch(() => alert("Error fetching weather data."));
 }
 
-// Fetch current weather data
-async function fetchWeather(city) {
-    try {
-        const response = await fetch(
-            https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${API_KEY}
-        );
-        const data = await response.json();
-        
-        if (data.cod === 200) {
-            displayWeather(data);
-        } else {
-            alert('City not found. Please try again.');
-        }
-    } catch (error) {
-        console.error('Error fetching weather data:', error);
-        alert('Error fetching weather data. Please try again.');
-    }
-}
+function getForecast(city) {
+  fetch(`https://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${apiKey}`)
+    .then(res => res.json())
+    .then(data => {
+      const container = document.getElementById("forecast-container");
+      container.innerHTML = "";
 
-// Display weather data
-function displayWeather(data) {
-    cityName.textContent = ${data.name}, ${data.sys.country};
-    temperature.textContent = ${Math.round(data.main.temp)}°C;
-    weatherDesc.textContent = data.weather[0].description;
-    weatherIcon.src = https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png;
-    feelsLike.textContent = ${Math.round(data.main.feels_like)}°C;
-    humidity.textContent = ${data.main.humidity}%;
-    windSpeed.textContent = ${(data.wind.speed * 3.6).toFixed(1)} km/h;
-    pressure.textContent = ${data.main.pressure} hPa;
-}
-
-// Fetch forecast data
-async function fetchForecast(city) {
-    try {
-        const response = await fetch(
-            https://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${API_KEY}
-        );
-        const data = await response.json();
-        
-        if (data.cod === '200') {
-            displayForecast(data.list);
+      const forecast = {};
+      data.list.forEach(item => {
+        const date = item.dt_txt.split(" ")[0];
+        if (!forecast[date] && item.dt_txt.includes("12:00:00")) {
+          forecast[date] = item;
         }
-    } catch (error) {
-        console.error('Error fetching forecast data:', error);
-    }
-}
+      });
 
-// Display forecast data
-function displayForecast(forecastData) {
-    // Clear previous forecast
-    forecastContainer.innerHTML = '';
-    
-    // We'll show one forecast per day (at noon when available)
-    const dailyForecasts = [];
-    
-    for (let i = 0; i < forecastData.length; i++) {
-        const forecast = forecastData[i];
-        const date = new Date(forecast.dt * 1000);
-        const hours = date.getHours();
-        
-        // Use noon forecast or the first available forecast of the day
-        if (hours === 12 || dailyForecasts.length === 0 || 
-            !isSameDay(date, new Date(dailyForecasts[dailyForecasts.length - 1].dt * 1000))) {
-            dailyForecasts.push(forecast);
-        }
-        
-        // Limit to 5 days
-        if (dailyForecasts.length === 5) break;
-    }
-    
-    // Create forecast cards
-    dailyForecasts.forEach(forecast => {
-        const date = new Date(forecast.dt * 1000);
-        const day = date.toLocaleDateString('en-US', { weekday: 'short' });
-        
-        const forecastCard = document.createElement('div');
-        forecastCard.className = 'forecast-card';
-        forecastCard.innerHTML = `
-            <div class="forecast-day">${day}</div>
-            <div class="forecast-icon">
-                <img src="https://openweathermap.org/img/wn/${forecast.weather[0].icon}.png" alt="${forecast.weather[0].description}">
-            </div>
-            <div class="forecast-temp">
-                <span class="max-temp">${Math.round(forecast.main.temp_max)}°</span>
-                <span class="min-temp">${Math.round(forecast.main.temp_min)}°</span>
-            </div>
+      Object.values(forecast).slice(0, 5).forEach(day => {
+        const card = document.createElement("div");
+        card.classList.add("card");
+
+        const date = new Date(day.dt_txt).toLocaleDateString(undefined, { weekday: "short", day: "numeric" });
+
+        card.innerHTML = `
+          <div>${date}</div>
+          <img src="https://openweathermap.org/img/wn/${day.weather[0].icon}.png" alt="Icon" />
+          <div>${day.main.temp.toFixed(1)}°C</div>
         `;
-        
-        forecastContainer.appendChild(forecastCard);
+        container.appendChild(card);
+      });
     });
 }
 
-// Helper function to check if two dates are the same day
-function isSameDay(date1, date2) {
-    return date1.getFullYear() === date2.getFullYear() &&
-           date1.getMonth() === date2.getMonth() &&
-           date1.getDate() === date2.getDate();
-}
+// Time display
+setInterval(() => {
+  const now = new Date();
+  document.getElementById("current-time").textContent = now.toLocaleTimeString();
+}, 1000);
